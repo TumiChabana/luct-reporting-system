@@ -1,15 +1,45 @@
-import React from 'react';
-import { Container, Card, Row, Col, Alert, Table, Badge } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Card, Row, Col, Alert, Badge, Nav, Button } from 'react-bootstrap';
 import { supabase } from '../config/supabase';
+import ReportForm from './ReportForm';
+import ReportList from './ReportList';
 
 function Dashboard({ user }) {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [stats, setStats] = useState({ totalReports: 0, pendingReview: 0 });
+
+  useEffect(() => {
+    fetchStats();
+  }, [user]);
+
+  const fetchStats = async () => {
+    try {
+      let reportsQuery = supabase.from('reports').select('*', { count: 'exact' });
+      
+      if (user.role === 'lecturer') {
+        reportsQuery = reportsQuery.eq('lecturer_id', user.id);
+      }
+
+      const { count: totalReports, error } = await reportsQuery;
+
+      if (error) throw error;
+
+      setStats({
+        totalReports: totalReports || 0,
+        pendingReview: 0 // You can add logic for pending reviews
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
   const getRoleDescription = () => {
     const descriptions = {
-      student: 'View class reports and rate your classes',
-      lecturer: 'Submit class reports and track your teaching',
-      prl: 'Review lecturer reports and provide feedback',
-      pl: 'Manage courses and view program reports',
-      admin: 'Manage system users and overall monitoring'
+      student: 'View class reports and track your learning progress',
+      lecturer: 'Submit class reports and monitor student attendance',
+      prl: 'Review lecturer reports and provide quality feedback',
+      pl: 'Manage program courses and view academic analytics',
+      admin: 'System administration and user management'
     };
     return descriptions[user.role] || 'Welcome to the system';
   };
@@ -25,87 +55,175 @@ function Dashboard({ user }) {
     return colors[user.role] || 'success';
   };
 
+  const handleReportSubmitted = () => {
+    fetchStats(); // Refresh stats when new report is submitted
+    setActiveTab('my-reports');
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div>
+            <Row className="mb-4">
+              <Col md={4}>
+                <Card className="text-center">
+                  <Card.Body>
+                    <h3>{stats.totalReports}</h3>
+                    <p className="text-muted mb-0">
+                      {user.role === 'lecturer' ? 'Reports Submitted' : 'Total Reports'}
+                    </p>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card className="text-center">
+                  <Card.Body>
+                    <h3>{stats.pendingReview}</h3>
+                    <p className="text-muted mb-0">Pending Review</p>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card className="text-center">
+                  <Card.Body>
+                    <h3>
+                      {user.role === 'student' ? '📚' : 
+                       user.role === 'lecturer' ? '👨‍🏫' : 
+                       user.role === 'admin' ? '⚙️' : '📊'}
+                    </h3>
+                    <p className="text-muted mb-0">{user.role.toUpperCase()}</p>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Card>
+              <Card.Body>
+                <h5>Quick Actions</h5>
+                <Row>
+                  {user.role === 'lecturer' && (
+                    <Col md={6}>
+                      <div className="d-grid gap-2">
+                        <Button 
+                          variant="primary" 
+                          onClick={() => setActiveTab('submit-report')}
+                        >
+                          📝 Submit New Report
+                        </Button>
+                        <Button 
+                          variant="outline-primary" 
+                          onClick={() => setActiveTab('my-reports')}
+                        >
+                          📋 View My Reports
+                        </Button>
+                      </div>
+                    </Col>
+                  )}
+                  {user.role === 'student' && (
+                    <Col md={6}>
+                      <div className="d-grid gap-2">
+                        <Button 
+                          variant="success" 
+                          onClick={() => setActiveTab('view-reports')}
+                        >
+                          📚 View Class Reports
+                        </Button>
+                      </div>
+                    </Col>
+                  )}
+                  {user.role === 'prl' && (
+                    <Col md={6}>
+                      <div className="d-grid gap-2">
+                        <Button 
+                          variant="warning" 
+                          onClick={() => setActiveTab('review-reports')}
+                        >
+                          📋 Review Reports
+                        </Button>
+                      </div>
+                    </Col>
+                  )}
+                </Row>
+              </Card.Body>
+            </Card>
+          </div>
+        );
+
+      case 'submit-report':
+        return <ReportForm user={user} onReportSubmitted={handleReportSubmitted} />;
+
+      case 'my-reports':
+      case 'view-reports':
+      case 'review-reports':
+        return <ReportList user={user} />;
+
+      default:
+        return <div>Select a tab to get started</div>;
+    }
+  };
+
   return (
     <Container className="mt-4">
       <Row>
         <Col>
           <Card>
             <Card.Header>
-              <h3>Welcome to Your Dashboard</h3>
+              <Row>
+                <Col>
+                  <h3>Welcome to Your Dashboard</h3>
+                </Col>
+                <Col xs="auto">
+                  <Badge bg={getWelcomeColor()} className="fs-6">
+                    {user.role.toUpperCase()}
+                  </Badge>
+                </Col>
+              </Row>
             </Card.Header>
             <Card.Body>
               <Alert variant={getWelcomeColor()}>
-                <h5>🎉 Login Successful!</h5>
-                <strong>Name:</strong> {user.name}<br />
-                <strong>Role:</strong> <Badge bg={getWelcomeColor()}>{user.role.toUpperCase()}</Badge><br />
-                <strong>Email:</strong> {user.email}<br />
-                {user.stream !== 'N/A' && <><strong>Stream:</strong> {user.stream}<br /></>}
-                {user.degree_type !== 'N/A' && <><strong>Program:</strong> {user.degree_type}<br /></>}
+                <h5>👋 Hello, {user.name}!</h5>
+                <p className="mb-0">{getRoleDescription()}</p>
               </Alert>
 
-              <Card className="mt-3">
-                <Card.Body>
-                  <h5>Your Role Capabilities</h5>
-                  <p>{getRoleDescription()}</p>
-                  
-                  <Row className="mt-4">
-                    <Col md={6}>
-                      <Card className="bg-light">
-                        <Card.Body>
-                          <h6>Quick Actions:</h6>
-                          <ul>
-                            {user.role === 'student' && (
-                              <>
-                                <li>View Class Reports</li>
-                                <li>Rate Classes</li>
-                                <li>Track Attendance</li>
-                              </>
-                            )}
-                            {user.role === 'lecturer' && (
-                              <>
-                                <li>Submit Reports</li>
-                                <li>View Reporting History</li>
-                                <li>Monitor Student Progress</li>
-                              </>
-                            )}
-                            {user.role === 'admin' && (
-                              <>
-                                <li>User Management</li>
-                                <li>System Reports</li>
-                                <li>Analytics Dashboard</li>
-                              </>
-                            )}
-                          </ul>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                    
-                    <Col md={6}>
-                      <Card>
-                        <Card.Body>
-                          <h6>System Status</h6>
-                          <Table striped size="sm">
-                            <tbody>
-                              <tr>
-                                <td>Database</td>
-                                <td><Badge bg="success">Connected</Badge></td>
-                              </tr>
-                              <tr>
-                                <td>Authentication</td>
-                                <td><Badge bg="success">Active</Badge></td>
-                              </tr>
-                              <tr>
-                                <td>User Role</td>
-                                <td><Badge bg={getWelcomeColor()}>{user.role}</Badge></td>
-                              </tr>
-                            </tbody>
-                          </Table>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
+              {/* Navigation Tabs */}
+              <Nav variant="tabs" activeKey={activeTab} onSelect={setActiveTab} className="mb-4">
+                <Nav.Item>
+                  <Nav.Link eventKey="overview">📊 Overview</Nav.Link>
+                </Nav.Item>
+                
+                {user.role === 'lecturer' && (
+                  <>
+                    <Nav.Item>
+                      <Nav.Link eventKey="submit-report">📝 Submit Report</Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                      <Nav.Link eventKey="my-reports">📋 My Reports</Nav.Link>
+                    </Nav.Item>
+                  </>
+                )}
+                
+                {user.role === 'student' && (
+                  <Nav.Item>
+                    <Nav.Link eventKey="view-reports">📚 View Reports</Nav.Link>
+                  </Nav.Item>
+                )}
+                
+                {user.role === 'prl' && (
+                  <Nav.Item>
+                    <Nav.Link eventKey="review-reports">📋 Review Reports</Nav.Link>
+                  </Nav.Item>
+                )}
+                
+                {user.role === 'admin' && (
+                  <Nav.Item>
+                    <Nav.Link eventKey="admin">⚙️ Admin Panel</Nav.Link>
+                  </Nav.Item>
+                )}
+              </Nav>
+
+              {/* Tab Content */}
+              {renderTabContent()}
             </Card.Body>
           </Card>
         </Col>
