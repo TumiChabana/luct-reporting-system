@@ -1,50 +1,101 @@
+import { exportToExcel } from '../services/exportService';
+import RatingSystem from './RatingSystem';
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Badge, Button, Row, Col, Modal, Form } from 'react-bootstrap';
 import { supabase } from '../config/supabase';
 
 function ReportList({ user }) {
+  const [exporting, setExporting] = useState(false);
   const [reports, setReports] = useState([]);
+  const [filteredReports, setFilteredReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
   const [showModal, setShowModal] = useState(false);
-
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [courseFilter, setCourseFilter] = useState('all');
+  const handleExport = async () => {
+  setExporting(true);
+  try {
+    await exportToExcel(user);
+    // Success handled by download
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    setExporting(false);
+  }
+};
   useEffect(() => {
     fetchReports();
   }, [user]);
 
-  const fetchReports = async () => {
-    try {
-      let query = supabase
-        .from('reports')
-        .select(`
-          *,
-          lecturer:users!reports_lecturer_id_fkey(name, email),
-          prl:users!reports_prl_id_fkey(name)
-        `)
-        .order('created_at', { ascending: false });
+const fetchReports = async () => {
+  setLoading(true);
+  try {
+    let query = supabase
+      .from('reports')
+      .select(`
+        *,
+        lecturer:users!reports_lecturer_id_fkey(id, name),
+        prl:users!reports_prl_id_fkey(id, name)
+      `)
+      .order('date_of_lecture', { ascending: false });
 
-      // Filter based on user role
-      if (user.role === 'lecturer') {
-        query = query.eq('lecturer_id', user.id);
-      } else if (user.role === 'student') {
-        // Students see all reports (in real app, would filter by their stream/course)
-        query = query;
-      } else if (user.role === 'prl') {
-        // PRL sees reports from their stream
-        query = query.eq('status', 'submitted');
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setReports(data || []);
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-    } finally {
-      setLoading(false);
+    // Filter based on user role
+    if (user.role === 'lecturer') {
+      query = query.eq('lecturer_id', user.id);
+    } else if (user.role === 'student') {
+      // If students should only see certain reports, add filter here
+      // For now, showing all reports
+    } else if (user.role === 'prl') {
+      // PRLs can see all reports
     }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    
+    setReports(data || []);
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    alert('Failed to load reports: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  useEffect(() => {
+    filterReports();
+  }, [reports, searchTerm, statusFilter, courseFilter]);
+
+  const filterReports = () => {
+    let filtered = reports;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(report =>
+        report.course_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.course_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.class_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        report.lecturer?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(report => report.status === statusFilter);
+    }
+
+    // Course filter
+    if (courseFilter !== 'all') {
+      filtered = filtered.filter(report => report.course_code === courseFilter);
+    }
+
+    setFilteredReports(filtered);
   };
 
+  // Get unique courses for filter
+  const uniqueCourses = [...new Set(reports.map(report => report.course_code))];
   const getStatusVariant = (status) => {
     const variants = {
       submitted: 'warning',
@@ -74,6 +125,7 @@ function ReportList({ user }) {
         if (error) throw error;
         
         setShowModal(false);
+        
         fetchReports(); // Refresh the list
       } catch (error) {
         console.error('Error adding feedback:', error);
@@ -100,13 +152,25 @@ function ReportList({ user }) {
     <Container>
       <Card>
         <Card.Header>
-          <h4>📋 Class Reports</h4>
-          <small className="text-muted">
-            {user.role === 'lecturer' ? 'Your submitted reports' : 
-             user.role === 'student' ? 'Available class reports' :
-             'Reports for review'}
-          </small>
-        </Card.Header>
+  <div className="d-flex justify-content-between align-items-center">
+    <div>
+      <h4>📋 Class Reports</h4>
+      <small className="text-muted">
+        {user.role === 'lecturer' ? 'Your submitted reports' : 
+         user.role === 'student' ? 'Available class reports' :
+         'Reports for review'}
+      </small>
+    </div>
+    <Button
+      variant="success"
+      size="sm"
+      onClick={handleExport}
+      disabled={exporting || reports.length === 0}
+    >
+      {exporting ? '⏳ Exporting...' : '📊 Export to Excel'}
+    </Button>
+  </div>
+</Card.Header>
         <Card.Body>
           {reports.length === 0 ? (
             <div className="text-center py-4">
@@ -116,54 +180,137 @@ function ReportList({ user }) {
               )}
             </div>
           ) : (
-            <Table responsive striped>
-              <thead>
-                <tr>
-                  <th>Course</th>
-                  <th>Class</th>
-                  <th>Week</th>
-                  <th>Date</th>
-                  <th>Students</th>
-                  {user.role !== 'lecturer' && <th>Lecturer</th>}
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((report) => (
-                  <tr key={report.id}>
-                    <td>
-                      <strong>{report.course_code}</strong>
-                      <br />
-                      <small>{report.course_name}</small>
-                    </td>
-                    <td>{report.class_name}</td>
-                    <td>Week {report.week_of_reporting}</td>
-                    <td>{new Date(report.date_of_lecture).toLocaleDateString()}</td>
-                    <td>
-                      {report.actual_students_present}/{report.total_registered_students}
-                    </td>
-                    {user.role !== 'lecturer' && (
-                      <td>{report.lecturer?.name}</td>
-                    )}
-                    <td>
-                      <Badge bg={getStatusVariant(report.status)}>
-                        {report.status.replace('_', ' ')}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        onClick={() => viewReportDetails(report)}
-                      >
-                        View
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+            <Card.Body>
+  {/* Search and Filter Section */}
+  <Row className="mb-3">
+    <Col md={4}>
+      <Form.Group>
+        <Form.Label>Search</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Search by course, class, or lecturer..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </Form.Group>
+    </Col>
+    <Col md={4}>
+      <Form.Group>
+        <Form.Label>Status</Form.Label>
+        <Form.Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">All Status</option>
+          <option value="submitted">Submitted</option>
+          <option value="under_review">Under Review</option>
+          <option value="reviewed">Reviewed</option>
+        </Form.Select>
+      </Form.Group>
+    </Col>
+    <Col md={4}>
+      <Form.Group>
+        <Form.Label>Course</Form.Label>
+        <Form.Select
+          value={courseFilter}
+          onChange={(e) => setCourseFilter(e.target.value)}
+        >
+          <option value="all">All Courses</option>
+          {uniqueCourses.map(course => (
+            <option key={course} value={course}>{course}</option>
+          ))}
+        </Form.Select>
+      </Form.Group>
+    </Col>
+  </Row>
+
+  {/* Results Count */}
+  <div className="d-flex justify-content-between align-items-center mb-3">
+    <span className="text-muted">
+      Showing {filteredReports.length} of {reports.length} reports
+    </span>
+    {(searchTerm || statusFilter !== 'all' || courseFilter !== 'all') && (
+      <Button
+        variant="outline-secondary"
+        size="sm"
+        onClick={() => {
+          setSearchTerm('');
+          setStatusFilter('all');
+          setCourseFilter('all');
+        }}
+      >
+        Clear Filters
+      </Button>
+    )}
+  </div>
+
+  {filteredReports.length === 0 ? (
+    <div className="text-center py-4">
+      <p className="text-muted">No reports found matching your criteria.</p>
+      {(searchTerm || statusFilter !== 'all' || courseFilter !== 'all') && (
+        <Button
+          variant="primary"
+          onClick={() => {
+            setSearchTerm('');
+            setStatusFilter('all');
+            setCourseFilter('all');
+          }}
+        >
+          Clear Filters
+        </Button>
+      )}
+    </div>
+  ) : (
+    <Table responsive striped>
+      <thead>
+        <tr>
+          <th>Course</th>
+          <th>Class</th>
+          <th>Week</th>
+          <th>Date</th>
+          <th>Students</th>
+          {user.role !== 'lecturer' && <th>Lecturer</th>}
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredReports.map((report) => (
+          <tr key={report.id}>
+            <td>
+              <strong>{report.course_code}</strong>
+              <br />
+              <small>{report.course_name}</small>
+            </td>
+            <td>{report.class_name}</td>
+            <td>Week {report.week_of_reporting}</td>
+            <td>{new Date(report.date_of_lecture).toLocaleDateString()}</td>
+            <td>
+              {report.actual_students_present}/{report.total_registered_students}
+            </td>
+            {user.role !== 'lecturer' && (
+              <td>{report.lecturer?.name}</td>
+            )}
+            <td>
+              <Badge bg={getStatusVariant(report.status)}>
+                {report.status.replace('_', ' ')}
+              </Badge>
+            </td>
+            <td>
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={() => viewReportDetails(report)}
+              >
+                View
+              </Button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  )}
+</Card.Body>
           )}
         </Card.Body>
       </Card>
@@ -249,6 +396,10 @@ function ReportList({ user }) {
             </div>
           )}
         </Modal.Body>
+
+        {/* Add this after the existing modal content, before the modal footer */}
+        <RatingSystem user={user} reportId={selectedReport?.id} />
+
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Close

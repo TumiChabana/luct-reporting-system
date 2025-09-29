@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar, Nav, Button, Container } from 'react-bootstrap';
 import { supabase } from './config/supabase';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Login from './components/login';
 import Dashboard from './components/dashboard';
+import Footer from './components/Footer';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -63,14 +65,16 @@ function App() {
 
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-        <div className="text-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-2">Loading LUCT Reporting System...</p>
+      
+    <Container className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+      <div className="text-center">
+        <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
+          <span className="visually-hidden">Loading...</span>
         </div>
-      </Container>
+        <h4 className="mt-3 text-primary">LUCT Reporting System</h4>
+        <p className="text-muted">Loading your dashboard...</p>
+      </div>
+    </Container>
     );
   }
 
@@ -95,6 +99,7 @@ function App() {
       </Navbar>
 
       <Dashboard user={user} />
+      <Footer/>
     </div>
   );
 }

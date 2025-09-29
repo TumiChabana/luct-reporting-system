@@ -1,8 +1,11 @@
+import UserManagement from './UserManagement';
+import SystemStats from './SystemStats';
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Row, Col, Alert, Badge, Nav, Button } from 'react-bootstrap';
 import { supabase } from '../config/supabase';
 import ReportForm from './ReportForm';
 import ReportList from './ReportList';
+
 
 function Dashboard({ user }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -62,8 +65,16 @@ function Dashboard({ user }) {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'admin':
+        return (
+            <div>
+            <SystemStats user={user} />
+            <UserManagement user={user} />
+            </div>
+        );
       case 'overview':
         return (
+          
           <div>
             <Row className="mb-4">
               <Col md={4}>
@@ -216,6 +227,7 @@ function Dashboard({ user }) {
                 )}
                 
                 {user.role === 'admin' && (
+                  
                   <Nav.Item>
                     <Nav.Link eventKey="admin">⚙️ Admin Panel</Nav.Link>
                   </Nav.Item>
