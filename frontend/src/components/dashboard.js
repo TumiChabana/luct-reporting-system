@@ -5,6 +5,8 @@ import { Container, Card, Row, Col, Alert, Badge, Nav, Button } from 'react-boot
 import { supabase } from '../config/supabase';
 import ReportForm from './ReportForm';
 import ReportList from './ReportList';
+import '../App.css';
+import CourseAssignment from './CourseAssignment';
 
 
 function Dashboard({ user }) {
@@ -99,9 +101,9 @@ function Dashboard({ user }) {
                 <Card className="text-center">
                   <Card.Body>
                     <h3>
-                      {user.role === 'student' ? '📚' : 
-                       user.role === 'lecturer' ? '👨‍🏫' : 
-                       user.role === 'admin' ? '⚙️' : '📊'}
+                      {user.role === 'student' ? '()' : 
+                       user.role === 'lecturer' ? '()' : 
+                       user.role === 'admin' ? '' : ''}
                     </h3>
                     <p className="text-muted mb-0">{user.role.toUpperCase()}</p>
                   </Card.Body>
@@ -120,13 +122,13 @@ function Dashboard({ user }) {
                           variant="primary" 
                           onClick={() => setActiveTab('submit-report')}
                         >
-                          📝 Submit New Report
+                          Submit New Report
                         </Button>
                         <Button 
                           variant="outline-primary" 
                           onClick={() => setActiveTab('my-reports')}
                         >
-                          📋 View My Reports
+                          View My Reports
                         </Button>
                       </div>
                     </Col>
@@ -138,7 +140,7 @@ function Dashboard({ user }) {
                           variant="success" 
                           onClick={() => setActiveTab('view-reports')}
                         >
-                          📚 View Class Reports
+                          View Class Reports
                         </Button>
                       </div>
                     </Col>
@@ -150,7 +152,7 @@ function Dashboard({ user }) {
                           variant="warning" 
                           onClick={() => setActiveTab('review-reports')}
                         >
-                          📋 Review Reports
+                          Review Reports
                         </Button>
                       </div>
                     </Col>
@@ -161,6 +163,8 @@ function Dashboard({ user }) {
           </div>
         );
 
+      case 'course-assignment':
+            return <CourseAssignment user={user} />;
       case 'submit-report':
         return <ReportForm user={user} onReportSubmitted={handleReportSubmitted} />;
 
@@ -193,45 +197,52 @@ function Dashboard({ user }) {
             </Card.Header>
             <Card.Body>
               <Alert variant={getWelcomeColor()}>
-                <h5>👋 Hello, {user.name}!</h5>
+                <h5>Hello, {user.name}!</h5>
                 <p className="mb-0">{getRoleDescription()}</p>
               </Alert>
 
               {/* Navigation Tabs */}
               <Nav variant="tabs" activeKey={activeTab} onSelect={setActiveTab} className="mb-4">
                 <Nav.Item>
-                  <Nav.Link eventKey="overview">📊 Overview</Nav.Link>
+                  <Nav.Link eventKey="overview">Overview</Nav.Link>
                 </Nav.Item>
                 
                 {user.role === 'lecturer' && (
                   <>
                     <Nav.Item>
-                      <Nav.Link eventKey="submit-report">📝 Submit Report</Nav.Link>
+                      <Nav.Link eventKey="submit-report">Submit Report</Nav.Link>
                     </Nav.Item>
                     <Nav.Item>
-                      <Nav.Link eventKey="my-reports">📋 My Reports</Nav.Link>
+                      <Nav.Link eventKey="my-reports">My Reports</Nav.Link>
                     </Nav.Item>
                   </>
                 )}
                 
                 {user.role === 'student' && (
                   <Nav.Item>
-                    <Nav.Link eventKey="view-reports">📚 View Reports</Nav.Link>
+                    <Nav.Link eventKey="view-reports">View Reports</Nav.Link>
                   </Nav.Item>
                 )}
                 
                 {user.role === 'prl' && (
                   <Nav.Item>
-                    <Nav.Link eventKey="review-reports">📋 Review Reports</Nav.Link>
+                    <Nav.Link eventKey="review-reports">Review Reports</Nav.Link>
                   </Nav.Item>
                 )}
                 
                 {user.role === 'admin' && (
                   
                   <Nav.Item>
-                    <Nav.Link eventKey="admin">⚙️ Admin Panel</Nav.Link>
+                    <Nav.Link eventKey="admin">Admin Panel</Nav.Link>
                   </Nav.Item>
                 )}
+
+                {user.role === 'pl' && (
+                    <Nav.Item>
+                        <Nav.Link eventKey="course-assignment">Assign Courses</Nav.Link>
+                    </Nav.Item>
+                )}
+
               </Nav>
 
               {/* Tab Content */}

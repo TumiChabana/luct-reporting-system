@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Badge, Button, Modal, Form, Alert } from 'react-bootstrap';
 import { supabase } from '../config/supabase';
+import '../App.css';
 
 function UserManagement({ user }) {
   const [users, setUsers] = useState([]);
@@ -158,6 +159,36 @@ function UserManagement({ user }) {
         <Modal.Body>
           {editingUser && (
             <Form>
+
+                // In the edit form, add these fields
+                <Form.Group className="mb-3">
+                <Form.Label>Stream</Form.Label>
+                <Form.Select
+                    value={editingUser.stream}
+                    onChange={(e) => setEditingUser({...editingUser, stream: e.target.value})}
+                >
+                    <option value="">Select Stream...</option>
+                    <option value="IT">Information Technology</option>
+                    <option value="Information Systems">Information Systems</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Software Engineering">Software Engineering</option>
+                    <option value="N/A">Not Applicable</option>
+                </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                <Form.Label>Program Type</Form.Label>
+                <Form.Select
+                    value={editingUser.program_type}
+                    onChange={(e) => setEditingUser({...editingUser, program_type: e.target.value})}
+                >
+                    <option value="">Select Program Type...</option>
+                    <option value="Degree">Degree Program Leader</option>
+                    <option value="Diploma">Diploma Program Leader</option>
+                    <option value="N/A">Not Applicable</option>
+                </Form.Select>
+                </Form.Group>
+
               <Form.Group className="mb-3">
                 <Form.Label>Name</Form.Label>
                 <Form.Control

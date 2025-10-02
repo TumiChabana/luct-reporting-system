@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Row, Col, Table, Badge } from 'react-bootstrap';
 import { supabase } from '../config/supabase';
+import '../App.css';
 
 function SystemStats({ user }) {
   const [stats, setStats] = useState({
