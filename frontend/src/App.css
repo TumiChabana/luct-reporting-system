@@ -220,6 +220,7 @@ textarea.form-control {
 }
 
 /* Tables */
+
 .table {
   color: var(--text-primary);
   background: transparent;
@@ -238,13 +239,11 @@ textarea.form-control {
   transition: all 0.3s ease;
 }
 
-.table tbody tr:hover {
-  background: rgba(139, 92, 246, 0.05);
-}
 
 .table tbody td {
   padding: 1rem;
-  color: var(--text-secondary);
+  color: rgba(23, 2, 61, 0.84);
+  font-family:   monospace;
 }
 
 .table-striped tbody tr:nth-of-type(odd) {

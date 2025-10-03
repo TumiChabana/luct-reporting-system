@@ -1,8 +1,10 @@
 import { exportToExcel } from '../services/exportService';
+import { exportSingleReportToExcel } from '../services/exportService';
 import RatingSystem from './RatingSystem';
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Badge, Button, Row, Col, Modal, Form } from 'react-bootstrap';
 import { supabase } from '../config/supabase';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import '../App.css';
 
 function ReportList({ user }) {
@@ -297,7 +299,7 @@ function ReportList({ user }) {
                   <p className="text-muted">No reports found matching your criteria.</p>
                 </div>
               ) : (
-                <Table responsive striped>
+                <Table responsive striped className="reports-table">
                   <thead>
                     <tr>
                       <th>Course</th>
@@ -335,7 +337,7 @@ function ReportList({ user }) {
                         <td>
                           <div className="d-flex gap-1">
                             <Button
-                              variant="outline-primary"
+                              
                               size="sm"
                               onClick={() => viewReportDetails(report)}
                             >
