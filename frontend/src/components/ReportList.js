@@ -19,6 +19,9 @@ function ReportList({ user }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [courseFilter, setCourseFilter] = useState('all');
   
+  // Add state for feedback text
+  const [feedbackText, setFeedbackText] = useState('');
+  
   // Add missing function for single report export
   const exportSingleReportToExcel = async (report) => {
     // You'll need to implement this function in your exportService
@@ -110,25 +113,35 @@ function ReportList({ user }) {
 
   const viewReportDetails = (report) => {
     setSelectedReport(report);
+    // Initialize feedback text with existing feedback or empty string
+    setFeedbackText(report.prl_feedback || '');
     setShowModal(true);
   };
 
-  // Add this function to handle PRL feedback
-  const handleAddFeedback = async (reportId, feedback) => {
-    if (user.role === 'prl') {
+  // Updated function to handle PRL feedback
+  const handleAddFeedback = async () => {
+    if (user.role === 'prl' && selectedReport) {
+      // Validate feedback
+      if (!feedbackText || feedbackText.trim() === '') {
+        alert('Please enter feedback before submitting.');
+        return;
+      }
+
       try {
         const { error } = await supabase
           .from('reports')
           .update({ 
-            prl_feedback: feedback,
+            prl_feedback: feedbackText.trim(),
             prl_id: user.id,
             status: 'reviewed'
           })
-          .eq('id', reportId);
+          .eq('id', selectedReport.id);
 
         if (error) throw error;
         
+        alert('Feedback submitted successfully!');
         setShowModal(false);
+        setFeedbackText(''); // Clear feedback text
         
         fetchReports(); // Refresh the list
       } catch (error) {
@@ -158,8 +171,6 @@ function ReportList({ user }) {
       }
     }
   };
-
-  
 
   const handleExport = async () => {
     setExporting(true);
@@ -337,7 +348,7 @@ function ReportList({ user }) {
                         <td>
                           <div className="d-flex gap-1">
                             <Button
-                              
+                              variant="primary"
                               size="sm"
                               onClick={() => viewReportDetails(report)}
                             >
@@ -379,7 +390,7 @@ function ReportList({ user }) {
                   onClick={() => handleExportSingle(selectedReport)}
                   disabled={exportingSingle === selectedReport.id}
                 >
-                  {exportingSingle === selectedReport.id ? ' Exporting...' : 'Download Excel'}
+                  {exportingSingle === selectedReport.id ? 'Exporting...' : 'Download Excel'}
                 </Button>
               </div>
 
@@ -428,7 +439,7 @@ function ReportList({ user }) {
               {selectedReport.lecturer_rating && (
                 <Row className="mt-2">
                   <Col md={12}>
-                    <strong>Lecturer Rating:</strong> {'⭐'.repeat(selectedReport.lecturer_rating)}
+                    <strong>Lecturer Rating:</strong> {'*'.repeat(selectedReport.lecturer_rating)}
                   </Col>
                 </Row>
               )}
@@ -437,7 +448,7 @@ function ReportList({ user }) {
               {selectedReport.prl_rating && (
                 <Row className="mt-2">
                   <Col md={12}>
-                    <strong>PRL Rating:</strong> {'⭐'.repeat(selectedReport.prl_rating)}
+                    <strong>PRL Rating:</strong> {'*'.repeat(selectedReport.prl_rating)}
                   </Col>
                 </Row>
               )}
@@ -475,15 +486,14 @@ function ReportList({ user }) {
                     <Form.Label>Add Feedback</Form.Label>
                     <Form.Control
                       as="textarea"
-                      rows={3}
-                      placeholder="Enter your feedback..."
-                      onChange={(e) => {
-                        setSelectedReport({
-                          ...selectedReport,
-                          prl_feedback: e.target.value
-                        });
-                      }}
+                      rows={4}
+                      placeholder="Enter your feedback here... (e.g., strengths, areas for improvement, recommendations)"
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
                     />
+                    <Form.Text className="text-muted">
+                      {feedbackText.length} characters
+                    </Form.Text>
                   </Form.Group>
                 </div>
               )}
@@ -500,7 +510,8 @@ function ReportList({ user }) {
           {user.role === 'prl' && !selectedReport?.prl_feedback && (
             <Button 
               variant="primary"
-              onClick={() => handleAddFeedback(selectedReport.id, selectedReport.prl_feedback)}
+              onClick={handleAddFeedback}
+              disabled={!feedbackText || feedbackText.trim() === ''}
             >
               Submit Feedback
             </Button>

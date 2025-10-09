@@ -96,7 +96,7 @@ function UserManagement({ user }) {
         </Card.Header>
         <Card.Body>
           {message && (
-            <Alert variant={message.includes('✅') ? 'success' : 'danger'}>
+            <Alert variant={message.includes('') ? 'success' : 'danger'}>
               {message}
             </Alert>
           )}

@@ -22,7 +22,7 @@ function Footer() {
                 <Nav.Link href="#terms" className="text-light small">Terms</Nav.Link>
               </Nav>
               <p className="text-muted mt-2 mb-0 small">
-                © 2024 LUCT. Developed for DIWA2110 - Web Application Development
+                &copy; 2024 LUCT. Developed for DIWA2110 - Web Application Development
               </p>
             </div>
           </div>

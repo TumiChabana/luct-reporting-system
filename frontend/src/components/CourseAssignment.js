@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Button, Modal, Form, Alert, Row, Col, Badge } from 'react-bootstrap';
 import { supabase } from '../config/supabase';
-import '../App.css';
 
 function CourseAssignment({ user }) {
   const [assignments, setAssignments] = useState([]);
   const [lecturers, setLecturers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -16,52 +16,130 @@ function CourseAssignment({ user }) {
     course_name: '',
     lecturer_id: '',
     stream: '',
-    program_type: '',
+    program_type: user.degree_type || 'Degree',
     academic_year: new Date().getFullYear().toString(),
     semester: '1'
   });
 
   useEffect(() => {
-    fetchAssignments();
-    fetchLecturers();
+    loadData();
   }, [user]);
+
+  const loadData = async () => {
+    setFetchingData(true);
+    await fetchAssignments();
+    await fetchLecturers();
+    setFetchingData(false);
+  };
 
   const fetchAssignments = async () => {
     try {
+      console.log('Starting fetchAssignments...');
+      console.log('User info:', { role: user.role, degree_type: user.degree_type, id: user.id });
+      
+      // First, try a simple query without joins
       let query = supabase
         .from('course_assignments')
-        .select(`
-          *,
-          lecturer:users!course_assignments_lecturer_id_fkey(name, email, stream),
-          assigned_by_user:users!course_assignments_assigned_by_fkey(name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      // PL can only see assignments for their program type
+      // Filter by program type for PL users
       if (user.role === 'pl') {
-        query = query.eq('program_type', user.program_type);
+        console.log('Filtering for PL user, program_type:', user.degree_type);
+        query = query.eq('program_type', user.degree_type);
       }
 
-      const { data, error } = await query;
+      const { data: assignmentsData, error: assignmentsError } = await query;
 
-      if (error) throw error;
-      setAssignments(data || []);
+      if (assignmentsError) {
+        console.error('Error fetching assignments:', assignmentsError);
+        throw assignmentsError;
+      }
+
+      console.log('Raw assignments data:', assignmentsData);
+      console.log('Number of assignments found:', assignmentsData?.length || 0);
+
+      if (!assignmentsData || assignmentsData.length === 0) {
+        console.log('No assignments found');
+        setAssignments([]);
+        return;
+      }
+
+      // Fetch related user data separately for better error handling
+      const lecturerIds = [...new Set(assignmentsData.map(a => a.lecturer_id).filter(Boolean))];
+      const assignedByIds = [...new Set(assignmentsData.map(a => a.assigned_by).filter(Boolean))];
+      
+      console.log('Fetching lecturer IDs:', lecturerIds);
+      console.log('Fetching assigned_by IDs:', assignedByIds);
+
+      // Fetch lecturers
+      let lecturersMap = {};
+      if (lecturerIds.length > 0) {
+        const { data: lecturersData, error: lecturersError } = await supabase
+          .from('users')
+          .select('id, name, email, stream')
+          .in('id', lecturerIds);
+
+        if (!lecturersError && lecturersData) {
+          lecturersMap = Object.fromEntries(lecturersData.map(l => [l.id, l]));
+          console.log('Lecturers fetched:', lecturersMap);
+        } else {
+          console.warn('Could not fetch lecturers:', lecturersError);
+        }
+      }
+
+      // Fetch assigned_by users
+      let assignedByMap = {};
+      if (assignedByIds.length > 0) {
+        const { data: assignedByData, error: assignedByError } = await supabase
+          .from('users')
+          .select('id, name')
+          .in('id', assignedByIds);
+
+        if (!assignedByError && assignedByData) {
+          assignedByMap = Object.fromEntries(assignedByData.map(u => [u.id, u]));
+          console.log('Assigned by users fetched:', assignedByMap);
+        } else {
+          console.warn('Could not fetch assigned_by users:', assignedByError);
+        }
+      }
+
+      // Combine the data
+      const enrichedAssignments = assignmentsData.map(assignment => ({
+        ...assignment,
+        lecturer: lecturersMap[assignment.lecturer_id] || null,
+        assigned_by_user: assignedByMap[assignment.assigned_by] || null
+      }));
+
+      console.log('Enriched assignments:', enrichedAssignments);
+      setAssignments(enrichedAssignments);
+
     } catch (error) {
-      console.error('Error fetching assignments:', error);
+      console.error('Error in fetchAssignments:', error);
+      setError('Failed to load course assignments: ' + error.message);
+      setAssignments([]);
     }
   };
 
   const fetchLecturers = async () => {
     try {
+      console.log('Fetching lecturers...');
       const { data, error } = await supabase
         .from('users')
-        .select('*')
-        .in('role', ['lecturer', 'prl', 'pl']);
+        .select('id, name, email, role, stream')
+        .in('role', ['lecturer', 'prl'])
+        .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching lecturers:', error);
+        throw error;
+      }
+      
+      console.log('Lecturers fetched:', data);
       setLecturers(data || []);
     } catch (error) {
-      console.error('Error fetching lecturers:', error);
+      console.error('Error in fetchLecturers:', error);
+      setError('Failed to load lecturers: ' + error.message);
     }
   };
 
@@ -69,33 +147,60 @@ function CourseAssignment({ user }) {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setMessage('');
 
     try {
-      const { error } = await supabase
-        .from('course_assignments')
-        .insert([
-          {
-            ...formData,
-            assigned_by: user.id
-          }
-        ]);
+      console.log('Submitting form data:', formData);
 
-      if (error) throw error;
+      // Validate form data
+      if (!formData.course_code || !formData.course_name || !formData.lecturer_id || !formData.stream) {
+        throw new Error('Please fill in all required fields');
+      }
+
+      const insertData = {
+        course_code: formData.course_code.trim(),
+        course_name: formData.course_name.trim(),
+        lecturer_id: formData.lecturer_id,
+        stream: formData.stream,
+        program_type: formData.program_type,
+        academic_year: formData.academic_year,
+        semester: formData.semester,
+        assigned_by: user.id
+      };
+
+      console.log('Inserting data:', insertData);
+
+      const { data, error } = await supabase
+        .from('course_assignments')
+        .insert([insertData])
+        .select();
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
+
+      console.log('Insert successful:', data);
 
       setMessage('Course assigned successfully!');
       setShowModal(false);
+      
+      // Reset form
       setFormData({
         course_code: '',
         course_name: '',
         lecturer_id: '',
         stream: '',
-        program_type: user.program_type || '',
+        program_type: user.degree_type || 'Degree',
         academic_year: new Date().getFullYear().toString(),
         semester: '1'
       });
-      
-      fetchAssignments();
+
+      // Refetch assignments to ensure UI is in sync with database
+      await fetchAssignments();
+
     } catch (error) {
+      console.error('Error assigning course:', error);
       setError('Error assigning course: ' + error.message);
     } finally {
       setLoading(false);
@@ -106,84 +211,133 @@ function CourseAssignment({ user }) {
     if (!window.confirm('Are you sure you want to remove this course assignment?')) return;
 
     try {
+      console.log('Deleting assignment:', assignmentId);
+      
       const { error } = await supabase
         .from('course_assignments')
         .delete()
         .eq('id', assignmentId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
-      setMessage(' Course assignment removed!');
-      fetchAssignments();
+      console.log('Assignment deleted successfully');
+      setMessage('Course assignment removed successfully!');
+      
+      // Refetch to ensure UI is in sync
+      await fetchAssignments();
+      
     } catch (error) {
+      console.error('Error removing assignment:', error);
       setError('Error removing assignment: ' + error.message);
     }
   };
+
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (message || error) {
+      const timer = setTimeout(() => {
+        setMessage('');
+        setError('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message, error]);
 
   return (
     <Container>
       <Card>
         <Card.Header className="d-flex justify-content-between align-items-center">
           <div>
-            <h4>📚 Course Assignment Management</h4>
+            <h4>Course Assignment Management</h4>
             <small className="text-muted">
-              {user.role === 'pl' ? `Manage ${user.program_type} program courses` : 'Manage all course assignments'}
+              {user.role === 'pl' ? `Manage ${user.degree_type} program courses` : 'Manage all course assignments'}
             </small>
           </div>
           <Button variant="primary" onClick={() => setShowModal(true)}>
-            ➕ Assign New Course
+            + Assign New Course
           </Button>
         </Card.Header>
         <Card.Body>
-          {message && <Alert variant="success">{message}</Alert>}
-          {error && <Alert variant="danger">{error}</Alert>}
+          {message && <Alert variant="success" dismissible onClose={() => setMessage('')}>{message}</Alert>}
+          {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
 
-          <Table responsive striped>
-            <thead>
-              <tr>
-                <th>Course Code</th>
-                <th>Course Name</th>
-                <th>Lecturer</th>
-                <th>Stream</th>
-                <th>Program</th>
-                <th>Year/Semester</th>
-                <th>Assigned By</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map((assignment) => (
-                <tr key={assignment.id}>
-                  <td><strong>{assignment.course_code}</strong></td>
-                  <td>{assignment.course_name}</td>
-                  <td>{assignment.lecturer?.name}</td>
-                  <td>
-                    <Badge bg="info">{assignment.stream}</Badge>
-                  </td>
-                  <td>
-                    <Badge bg={assignment.program_type === 'Degree' ? 'primary' : 'success'}>
-                      {assignment.program_type}
-                    </Badge>
-                  </td>
-                  <td>{assignment.academic_year} - Sem {assignment.semester}</td>
-                  <td>{assignment.assigned_by_user?.name}</td>
-                  <td>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={() => handleDelete(assignment.id)}
-                    >
-                      Remove
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-
-          {assignments.length === 0 && (
+          {fetchingData ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="mt-3 text-muted">Loading course assignments...</p>
+            </div>
+          ) : assignments.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-muted">No course assignments found.</p>
+              <Button variant="outline-primary" onClick={() => setShowModal(true)}>
+                Create Your First Assignment
+              </Button>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <Table striped bordered hover>
+                <thead className="table-dark">
+                  <tr>
+                    <th>Course Code</th>
+                    <th>Course Name</th>
+                    <th>Lecturer</th>
+                    <th>Stream</th>
+                    <th>Program</th>
+                    <th>Year/Semester</th>
+                    <th>Assigned By</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignments.map((assignment) => (
+                    <tr key={assignment.id}>
+                      <td><strong>{assignment.course_code}</strong></td>
+                      <td>{assignment.course_name}</td>
+                      <td>
+                        {assignment.lecturer ? (
+                          <>
+                            {assignment.lecturer.name}
+                            <br />
+                            <small className="text-muted">{assignment.lecturer.email}</small>
+                          </>
+                        ) : (
+                          <span className="text-muted">Lecturer not found</span>
+                        )}
+                      </td>
+                      <td>
+                        <Badge bg="info">{assignment.stream}</Badge>
+                      </td>
+                      <td>
+                        <Badge bg={assignment.program_type === 'Degree' ? 'primary' : 'success'}>
+                          {assignment.program_type}
+                        </Badge>
+                      </td>
+                      <td>{assignment.academic_year} - Sem {assignment.semester}</td>
+                      <td>
+                        {assignment.assigned_by_user ? (
+                          assignment.assigned_by_user.name
+                        ) : (
+                          <span className="text-muted">Unknown</span>
+                        )}
+                      </td>
+                      <td>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleDelete(assignment.id)}
+                        >
+                          Remove
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
             </div>
           )}
         </Card.Body>
@@ -199,7 +353,7 @@ function CourseAssignment({ user }) {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Course Code</Form.Label>
+                  <Form.Label>Course Code *</Form.Label>
                   <Form.Control
                     type="text"
                     value={formData.course_code}
@@ -211,7 +365,7 @@ function CourseAssignment({ user }) {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Course Name</Form.Label>
+                  <Form.Label>Course Name *</Form.Label>
                   <Form.Control
                     type="text"
                     value={formData.course_name}
@@ -226,7 +380,7 @@ function CourseAssignment({ user }) {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Lecturer</Form.Label>
+                  <Form.Label>Lecturer *</Form.Label>
                   <Form.Select
                     value={formData.lecturer_id}
                     onChange={(e) => setFormData({...formData, lecturer_id: e.target.value})}
@@ -235,7 +389,7 @@ function CourseAssignment({ user }) {
                     <option value="">Select Lecturer...</option>
                     {lecturers.map(lecturer => (
                       <option key={lecturer.id} value={lecturer.id}>
-                        {lecturer.name} ({lecturer.role.toUpperCase()})
+                        {lecturer.name} ({lecturer.role.toUpperCase()}) - {lecturer.stream || 'N/A'}
                       </option>
                     ))}
                   </Form.Select>
@@ -243,7 +397,7 @@ function CourseAssignment({ user }) {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Stream</Form.Label>
+                  <Form.Label>Stream *</Form.Label>
                   <Form.Select
                     value={formData.stream}
                     onChange={(e) => setFormData({...formData, stream: e.target.value})}
@@ -262,21 +416,26 @@ function CourseAssignment({ user }) {
             <Row>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Program Type</Form.Label>
+                  <Form.Label>Program Type *</Form.Label>
                   <Form.Select
                     value={formData.program_type}
                     onChange={(e) => setFormData({...formData, program_type: e.target.value})}
                     required
+                    disabled={user.role === 'pl'}
                   >
-                    <option value="">Select...</option>
                     <option value="Degree">Degree</option>
                     <option value="Diploma">Diploma</option>
                   </Form.Select>
+                  {user.role === 'pl' && (
+                    <Form.Text className="text-muted">
+                      Locked to your program type
+                    </Form.Text>
+                  )}
                 </Form.Group>
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Academic Year</Form.Label>
+                  <Form.Label>Academic Year *</Form.Label>
                   <Form.Control
                     type="text"
                     value={formData.academic_year}
@@ -288,7 +447,7 @@ function CourseAssignment({ user }) {
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Semester</Form.Label>
+                  <Form.Label>Semester *</Form.Label>
                   <Form.Select
                     value={formData.semester}
                     onChange={(e) => setFormData({...formData, semester: e.target.value})}
@@ -301,13 +460,20 @@ function CourseAssignment({ user }) {
               </Col>
             </Row>
 
-            <div className="d-grid">
+            <div className="d-grid gap-2">
               <Button 
                 variant="primary" 
                 type="submit" 
                 disabled={loading}
               >
-                {loading ? 'Assigning...' : 'Assign Course'}
+                {loading ? 'Assigning...' : ' Assign Course'}
+              </Button>
+              <Button 
+                variant="outline-secondary" 
+                onClick={() => setShowModal(false)}
+                disabled={loading}
+              >
+                Cancel
               </Button>
             </div>
           </Form>

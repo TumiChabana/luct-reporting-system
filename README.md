@@ -4,7 +4,7 @@ A web-based reporting application for Limkokwing University of Creative Technolo
 
 ##  Live Demo
 - **Frontend:** https://luct-reporting-system.vercel.app/
-- **Backend Database:** Supabase (Cloud)
+- **Backend Database:** Supabase (Cloud) https://supabase.com/dashboard/project/iedcuexwhooderbipfqt
 
 ## Features
 - User Authentication & Role Management

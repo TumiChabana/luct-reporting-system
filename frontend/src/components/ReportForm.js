@@ -110,7 +110,7 @@ function ReportForm({ user, onReportSubmitted }) {
 
       if (error) throw error;
 
-      setMessage('✅ Report submitted successfully!');
+      setMessage('Report submitted successfully!');
       setFormData({
         faculty_name: 'Faculty of ICT',
         class_name: '',

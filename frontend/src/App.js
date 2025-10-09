@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar, Nav, Button, Container } from 'react-bootstrap';
+import { Navbar, Nav, Container } from 'react-bootstrap';
 import { supabase } from './config/supabase';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import HomePage from './components/HomePage';
@@ -9,11 +9,13 @@ import Footer from './components/Footer';
 import './App.css';
 
 function App() {
+  // ===== STATE MANAGEMENT =====
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [currentView, setCurrentView] = useState('home'); // 'home', 'login', 'dashboard'
 
+  // ===== AUTHENTICATION EFFECT =====
   useEffect(() => {
     // Check for demo user first
     const demoUser = localStorage.getItem('demo_user');
@@ -48,6 +50,7 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ===== USER PROFILE FETCHING =====
   const fetchUserProfile = async (email) => {
     try {
       const { data: userProfile, error } = await supabase
@@ -57,7 +60,7 @@ function App() {
         .single();
 
       if (error) throw error;
-      
+
       setUser(userProfile);
       setCurrentView('dashboard');
     } catch (error) {
@@ -67,6 +70,7 @@ function App() {
     }
   };
 
+  // ===== AUTHENTICATION HANDLERS =====
   const handleLogin = (userData) => {
     setUser(userData);
     setCurrentView('dashboard');
@@ -90,21 +94,24 @@ function App() {
     setCurrentView('home');
   };
 
+  // ===== LOADING STATE =====
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+      <div className="luct-loading-container">
         <div className="text-center">
-          <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <h4 className="mt-3 text-primary">LUCT Digital Campus</h4>
-          <p className="text-muted">Loading your experience...</p>
+          <div className="luct-spinner"></div>
+          <h4 className="luct-heading-md luct-mt-md text-primary">
+            LUCT Digital Campus
+          </h4>
+          <p className="luct-text-muted luct-mt-sm">
+            Loading your experience...
+          </p>
         </div>
-      </Container>
+      </div>
     );
   }
 
-  // Render based on current view
+  // ===== VIEW RENDERING LOGIC =====
   if (currentView === 'home') {
     return <HomePage onShowLogin={handleShowLogin} />;
   }
@@ -113,43 +120,43 @@ function App() {
     return <Login onLogin={handleLogin} onBack={handleBackToHome} />;
   }
 
-  // Dashboard view (user is logged in)
+  // ===== DASHBOARD VIEW (USER IS LOGGED IN) =====
   return (
     <div className="App">
       <Navbar className="navbar">
-  <Container className="navbar-Brand">
-    {/* Brand Logo + Title */}
-    <Navbar.Brand className="luct-navbar-brand">
-      <div>
-        <div className="luct-navbar-title">LUCT Reporting System</div>
-        <div className="luct-navbar-subtitle">Staff & Student Portal</div>
-      </div>
-    </Navbar.Brand>
+        <Container className="navbar-Brand">
+          {/* Brand Logo + Title */}
+          <Navbar.Brand className="luct-navbar-brand">
+            <div>
+              <div className="luct-navbar-title">LUCT Reporting System</div>
+              <div className="luct-navbar-subtitle">Staff & Student Portal</div>
+            </div>
+          </Navbar.Brand>
 
-    {/* Welcome text */}
-    <Nav className="luct-navbar-menu me-auto">
-      <span className="luct-navbar-welcome">
-        Welcome, <strong>{user.name}</strong>
-      </span>
-    </Nav>
+          {/* Welcome text */}
+          <Nav className="luct-navbar-menu me-auto">
+            <span className="luct-navbar-welcome">
+              Welcome, <strong>{user?.name || 'User'}</strong>
+            </span>
+          </Nav>
 
-    {/* Buttons */}
-    <Nav className="luct-navbar-menu">
-      <button
-        className="luct-navbar-btn"
-        onClick={() => setCurrentView('home')}
-      >
-        Campus Home
-      </button>
-      <button
-        className="luct-navbar-btn luct-navbar-btn-primary"
-        onClick={handleLogout}
-      >
-        Logout
-      </button>
-    </Nav>
-  </Container>
-</Navbar>
+          {/* Buttons */}
+          <Nav className="luct-navbar-menu">
+            <button
+              className="luct-navbar-btn"
+              onClick={() => setCurrentView('home')}
+            >
+              Campus Home
+            </button>
+            <button
+              className="luct-navbar-btn luct-navbar-btn-primary"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </Nav>
+        </Container>
+      </Navbar>
 
       <Dashboard user={user} />
       <Footer />
