@@ -38,4 +38,4 @@ A web-based reporting application for Limkokwing University of Creative Technolo
 - https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/linear-gradient
 - 
 
-*Developed for Web Application Development - DIWA2110 Assignment2 By Itumeleng Chabana *
+Developed for Web Application Development - DIWA2110 Assignment2 By Itumeleng Chabana 
