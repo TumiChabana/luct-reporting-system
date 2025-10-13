@@ -30,8 +30,8 @@ function HomePage({ onShowLogin }) {
     const sampleEvents = [
       {
          id: 1,
-        title: "Open Day 2024",
-        date: "2024-11-15",
+        title: "Open Day 2025",
+        date: "2025-11-15",
         time: "09:00",
         venue: "Main Campus, Maseru",
         type: "event",
@@ -40,7 +40,7 @@ function HomePage({ onShowLogin }) {
       {
         id: 2,
         title: "ICT Career Fair",
-        date: "2024-11-22",
+        date: "2025-11-22",
         time: "10:00",
         venue: "Student Center",
         type: "career",
@@ -49,15 +49,15 @@ function HomePage({ onShowLogin }) {
       {
         id: 3,
         title: "Mid-Term Examinations",
-        date: "2024-10-25",
+        date: "2025-10-25",
         time: "08:00",
         venue: "All Classrooms",
         type: "academic"
       },
       {
         id: 4,
-        title: "Career Fair 2024",
-        date: "2024-11-05",
+        title: "Career Fair 2025",
+        date: "2025-11-05",
         time: "10:00",
         venue: "Sports Complex",
         type: "career"
@@ -65,7 +65,7 @@ function HomePage({ onShowLogin }) {
       {
         id: 5,
         title: "Creative Arts Exhibition",
-        date: "2024-12-05",
+        date: "2025-12-05",
         time: "14:00",
         venue: "Campus Gallery",
         type: "academic",
@@ -74,7 +74,7 @@ function HomePage({ onShowLogin }) {
       {
         id: 6,
         title: "Entrepreneurship Workshop",
-        date: "2024-12-12",
+        date: "2025-12-12",
         time: "13:00",
         venue: "Business Innovation Hub",
         type: "workshop",
@@ -87,35 +87,35 @@ function HomePage({ onShowLogin }) {
         id: 1,
         title: "LUCT Ranked Top ICT Institution",
         excerpt: "Limkokwing University recognized as leading ICT education provider in the region...",
-        date: "2024-09-20",
+        date: "2025-09-20",
         category: "achievement"
       },
       {
         id: 2,
         title: "New Computer Labs Opening",
         excerpt: "State-of-the-art computer laboratories equipped with latest technology now available...",
-        date: "2024-09-18",
+        date: "2025-09-18",
         category: "facilities"
       },
       {
         id: 3,
         title: "Student Hackathon Winners",
         excerpt: "Our students win first place in national coding competition...",
-        date: "2024-09-15",
+        date: "2025-09-15",
         category: "achievement"
       },
       {
         id: 4,
         title: "Industry Partnership Program",
         excerpt: "New partnerships with leading tech companies for student internships...",
-        date: "2024-09-12",
+        date: "2025-09-12",
         category: "partnership"
       },
       {
         id: 5,
         title: "New Digital Media Lab Opening",
         excerpt: "Limkokwing Lesotho launches state-of-the-art digital media laboratory equipped with latest technology for multimedia students...",
-        date: "2024-10-20",
+        date: "2025-10-20",
         category: "facilities",
         fullContent: "The new digital media lab features high-end computers, professional editing software, and virtual reality equipment to enhance student learning experience."
       },
@@ -123,7 +123,7 @@ function HomePage({ onShowLogin }) {
         id: 6,
         title: "Student Wins Regional Coding Competition",
         excerpt: "LUCT student awarded first place in the Southern Africa ICT Innovation Challenge for developing innovative mobile application...",
-        date: "2024-10-15",
+        date: "2025-10-15",
         category: "achievement",
         fullContent: "The winning mobile app helps local farmers track market prices and connect with potential buyers across the region."
       },
@@ -131,7 +131,7 @@ function HomePage({ onShowLogin }) {
         id: 7,
         title: "Partnership with Local Tech Companies",
         excerpt: "New industry partnerships established to provide students with internship opportunities and real-world project experience...",
-        date: "2024-10-08",
+        date: "2025-10-08",
         category: "partnership",
         fullContent: "Collaboration with leading Lesotho tech firms to bridge the gap between academia and industry requirements."
       },
@@ -139,7 +139,7 @@ function HomePage({ onShowLogin }) {
         id: 8,
         title: "Cultural Diversity Week Celebration",
         excerpt: "Annual cultural week featuring traditional performances, food festivals, and international student presentations...",
-        date: "2024-10-01",
+        date: "2025-10-01",
         category: "campus",
         fullContent: "A week-long celebration of the diverse cultures represented in our student community, promoting unity and cultural exchange."
       }
@@ -513,7 +513,7 @@ const AcademicCalendarSection = () => {
         <div className="card">
           <div className="card-header">
             <Calendar size={24} style={{ color: '#8b5cf6' }} />
-            <h4 className="card-title">Academic Calendar - Semester 1, 2024</h4>
+            <h4 className="card-title">Academic Calendar - Semester 1, 2025</h4>
           </div>
           <div style={{ padding: '32px' }}>
             <div className="calendar-grid">

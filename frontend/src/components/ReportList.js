@@ -472,8 +472,8 @@ function ReportList({ user }) {
 
               {selectedReport.prl_feedback && (
                 <div className="mt-3 p-3 bg-light rounded">
-                  <strong>PRL Feedback:</strong>
-                  <p className="mt-1 mb-1">{selectedReport.prl_feedback}</p>
+                  <strong style={{color:'grey'}}>PRL Feedback:</strong>
+                  <p className="mt-1 mb-1" style={{color:'grey'}}>{selectedReport.prl_feedback}</p>
                   <small className="text-muted">
                     Reviewed by: {selectedReport.prl?.name}
                   </small>
@@ -483,7 +483,7 @@ function ReportList({ user }) {
               {user.role === 'prl' && !selectedReport.prl_feedback && (
                 <div className="mt-3">
                   <Form.Group>
-                    <Form.Label>Add Feedback</Form.Label>
+                    <Form.Label className="text-muted">Add Feedback</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows={4}
