@@ -23,11 +23,11 @@ function ReportList({ user }) {
   const [feedbackText, setFeedbackText] = useState('');
   
   // Add missing function for single report export
-  const exportSingleReportToExcel = async (report) => {
+  //const exportSingleReportToExcel = async (report) => {
     // You'll need to implement this function in your exportService
     // For now, using the existing export function
-    await exportToExcel(user, [report]); // Assuming exportToExcel can accept specific reports
-  };
+    //await exportToExcel(user, [report]); // Assuming exportToExcel can accept specific reports
+  //};
 
   const fetchReports = async () => {
     setLoading(true);
